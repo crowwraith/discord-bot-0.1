@@ -1,5 +1,7 @@
+
 import 'dotenv/config';
 import express from 'express';
+
 import {
   ButtonStyleTypes,
   InteractionResponseFlags,
@@ -8,97 +10,160 @@ import {
   MessageComponentTypes,
   verifyKeyMiddleware,
 } from 'discord-interactions';
+
 import { getRandomEmoji, DiscordRequest } from './utils.js';
 import { getShuffledOptions, getResult } from './game.js';
 
-// firestore import for database.
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-// init firebase.
-const firebaseapp = initializeApp(firebaseConfig);
-// Initialize Cloud Firestore and get a reference to the service
-const db = getFirestore(app);
-// adding data to document.
-import { collection, addDoc } from "firebase/firestore"; 
+// Firebase Admin SDK imports
+import admin from 'firebase-admin';
+import serviceAccount from './serviceAccountKey.json' with { type: 'json' };
 
-try {
-  const docRef = await addDoc(collection(db, "users"), {
-    first: "Ada",
-    last: "Lovelace",
-    born: 1815
-  });
-  console.log("Document written with ID: ", docRef.id);
-} catch (e) {
-  console.error("Error adding document: ", e);
+// --------------------------------------------------
+// FIREBASE INITIALIZATION
+// --------------------------------------------------
+
+// Initialize Firebase Admin SDK.
+// Hiermee krijgt je Discord-bot toegang tot je Firebase-project.
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+// Maak een Firestore database-referentie aan.
+// Deze gebruiken we om gegevens op te slaan en op te halen.
+const db = admin.firestore();
+
+console.log('Firebase Admin SDK initialized!');
+
+// --------------------------------------------------
+// FIRESTORE TEST DATA
+// --------------------------------------------------
+
+// Testfunctie om te controleren of Firestore werkt.
+// We gebruiken async/await omdat databasebewerkingen asynchroon zijn.
+async function testFirestore() {
+  try {
+    // Voeg een gebruiker toe aan de collectie 'users'.
+    const docRef = await db.collection('users').add({
+      first: 'Ada',
+      last: 'Lovelace',
+      born: 1815
+    });
+
+    console.log('Ada added with ID:', docRef.id);
+
+    // Voeg nog een gebruiker toe.
+    const secondDocRef = await db.collection('users').add({
+      first: 'Alan',
+      middle: 'Mathison',
+      last: 'Turing',
+      born: 1912
+    });
+
+    console.log('Alan added with ID:', secondDocRef.id);
+
+  } catch (error) {
+    // Als er iets misgaat, wordt de fout hier weergegeven.
+    console.error('Firestore error:', error);
+  }
 }
-try {
-  const docRef = await addDoc(collection(db, "users"), {
-    first: "Alan",
-    middle: "Mathison",
-    last: "Turing",
-    born: 1912
-  });
 
-  console.log("Document written with ID: ", docRef.id);
-} catch (e) {
-  console.error("Error adding document: ", e);
-}
+// Voer de test uit.
+await testFirestore();
 
-// Create an express app
+// --------------------------------------------------
+// EXPRESS INITIALIZATION
+// --------------------------------------------------
+
+// Maak een Express-app aan.
+// Discord gebruikt deze server om interacties naar je bot te sturen.
 const app = express();
-// Get port, or default to 3000
+
+// Bepaal welke poort de server gebruikt.
+// Als PORT niet in .env staat, wordt poort 3000 gebruikt.
 const PORT = process.env.PORT || 3000;
-// To keep track of our active games
+
+// Houd actieve games bij.
+// Bijvoorbeeld voor games die gebruikers momenteel spelen.
 const activeGames = {};
 
+// --------------------------------------------------
+// DISCORD INTERACTIONS
+// --------------------------------------------------
+
 /**
- * Interactions endpoint URL where Discord will send HTTP requests
- * Parse request body and verifies incoming requests using discord-interactions package
+ * Discord stuurt interacties naar dit endpoint.
+ * verifyKeyMiddleware controleert of de request daadwerkelijk
+ * van Discord afkomstig is.
  */
-app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
-  // Interaction id, type and data
-  const { id, type, data } = req.body;
+app.post(
+  '/interactions',
+  verifyKeyMiddleware(process.env.PUBLIC_KEY),
+  async function (req, res) {
 
-  /**
-   * Handle verification requests
-   */
-  if (type === InteractionType.PING) {
-    return res.send({ type: InteractionResponseType.PONG });
-  }
+    // Haal de gegevens van de Discord-interactie op.
+    const { id, type, data } = req.body;
 
-  /**
-   * Handle slash command requests
-   * See https://discord.com/developers/docs/interactions/application-commands#slash-commands
-   */
-  if (type === InteractionType.APPLICATION_COMMAND) {
-    const { name } = data;
+    // ----------------------------------------------
+    // DISCORD PING
+    // ----------------------------------------------
 
-    // "test" command
-    if (name === 'test') {
-      // Send a message into the channel where command was triggered from
+    // Discord stuurt een PING om te controleren of
+    // het interactions-endpoint correct werkt.
+    if (type === InteractionType.PING) {
       return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-          components: [
-            {
-              type: MessageComponentTypes.TEXT_DISPLAY,
-              // Fetches a random emoji to send from a helper function
-              content: `hello world ${getRandomEmoji()}`
-            }
-          ]
-        },
+        type: InteractionResponseType.PONG
       });
     }
 
-    console.error(`unknown command: ${name}`);
-    return res.status(400).json({ error: 'unknown command' });
+    // ----------------------------------------------
+    // SLASH COMMANDS
+    // ----------------------------------------------
+
+    if (type === InteractionType.APPLICATION_COMMAND) {
+      const { name } = data;
+
+      // Testcommand: /test
+      if (name === 'test') {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+            components: [
+              {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `hello world ${getRandomEmoji()}`
+              }
+            ]
+          }
+        });
+      }
+
+      // Onbekend slash command.
+      console.error(`Unknown command: ${name}`);
+
+      return res.status(400).json({
+        error: 'unknown command'
+      });
+    }
+
+    // ----------------------------------------------
+    // UNKNOWN INTERACTION
+    // ----------------------------------------------
+
+    console.error('Unknown interaction type:', type);
+
+    return res.status(400).json({
+      error: 'unknown interaction type'
+    });
   }
+);
 
-  console.error('unknown interaction type', type);
-  return res.status(400).json({ error: 'unknown interaction type' });
-});
+// --------------------------------------------------
+// START EXPRESS SERVER
+// --------------------------------------------------
 
+// Start de Express-server zodat Discord interacties
+// naar onze bot kan versturen.
 app.listen(PORT, () => {
   console.log('Listening on port', PORT);
 });
