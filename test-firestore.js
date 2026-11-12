@@ -1,22 +1,29 @@
 
 import 'dotenv/config';
+
 import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore,FieldValue } from 'firebase-admin/firestore';
+import {
+  getFirestore,
+  FieldValue
+} from 'firebase-admin/firestore';
+
 import serviceAccount from './serviceAccountKey.json' with { type: 'json' };
-console.log("TEST SCRIPT STARTED");
-// Initialize Firebase Admin SDK
-initializeApp({
+// use to test connection: node test-firestore.js 
+console.log('TEST SCRIPT STARTED');
+
+// Initialize Firebase
+const app = initializeApp({
   credential: cert(serviceAccount)
 });
 
 // Connect to Firestore
-const db = getFirestore();
+const db = getFirestore(app);
 
-// Test function
 async function testFirestore() {
-    console.log("FIRESTORE TEST STARTED");
+  console.log('FIRESTORE TEST STARTED');
+
   try {
-    // Add a test document to Firestore
+    // Add a test document
     const docRef = await db.collection('users').add({
       username: 'TestUser',
       coins: 100,
@@ -26,7 +33,7 @@ async function testFirestore() {
     console.log('Successfully connected to Firestore!');
     console.log('Document ID:', docRef.id);
 
-    // Read the document back to verify the data
+    // Retrieve the document
     const doc = await docRef.get();
 
     console.log('Retrieved data:', doc.data());
@@ -34,10 +41,12 @@ async function testFirestore() {
   } catch (error) {
     console.error('Firestore connection failed:', error);
     process.exitCode = 1;
+
   } finally {
     // Close Firebase connection
-    await app().delete();
+    await app.delete();
   }
 }
 
 testFirestore();
+
