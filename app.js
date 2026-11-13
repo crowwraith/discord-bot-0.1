@@ -58,7 +58,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
 
     if (name === 'play') {
-      
+      return res.send({ type: 4, data: { content: `hello world ${getRandomEmoji()}` } });
     }
 
     if (name === 'balance') {
