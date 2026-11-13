@@ -56,6 +56,20 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       return res.send({ type: 4, data: { content: `Je hebt ${userDoc.data().coins} coins` } });
     }
+
+    if (name === 'play') {
+      
+    }
+
+    if (name === 'balance') {
+      const userDoc = await db.collection('users').doc(req.body.member.user.id).get();
+
+      if (!userDoc.exists) {
+        return res.send({ type: 4, data: { content: "Je hebt nog geen coins!" } });
+      }
+
+      return res.send({ type: 4, data: { content: `Je hebt ${userDoc.data().coins} coins` } });
+    }
   }
 
   return res.status(400).json({ error: 'onbekend verzoek' });

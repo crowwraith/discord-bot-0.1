@@ -42,6 +42,14 @@ const BALANCE_COMMAND = {
   contexts: [0, 1, 2],
 };
 
+const PLAY_COMMAND = {
+  name: 'play',
+  description: 'Speel een game',
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+};
+
 // Command containing options
 const CHALLENGE_COMMAND = {
   name: 'challenge',
