@@ -56,8 +56,23 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       return res.send({ type: 4, data: { content: `Je hebt ${userDoc.data().coins} coins` } });
     }
-  }
+    if (name === 'leaderboard') {
+      const usersSnapshot = await db.collection('users')
+        .orderBy('coins', 'desc')
+        .get();
 
+      const leaderboard = [];
+
+      usersSnapshot.forEach(doc => {
+        leaderboard.push({
+            id: doc.id,
+            ...doc.data()
+        });
+    });
+
+    console.log(leaderboard);
+    }
+  }
   return res.status(400).json({ error: 'onbekend verzoek' });
 });
 

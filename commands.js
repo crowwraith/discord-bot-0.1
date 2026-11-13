@@ -42,6 +42,13 @@ const BALANCE_COMMAND = {
   contexts: [0, 1, 2],
 };
 
+const LEADERBOARD_COMMAND = {
+  name: 'leaderboard',
+  description: 'Bekijk wie de meeste coins heeft',
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+};
 // Command containing options
 const CHALLENGE_COMMAND = {
   name: 'challenge',
