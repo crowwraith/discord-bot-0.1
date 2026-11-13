@@ -201,8 +201,47 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       return res.send({ type: 4, data: { content: `Je hebt ${userDoc.data().coins} coins` } });
     }
   }
+    if (name === 'leaderboard') {
+      const usersSnapshot = await db.collection('users')
+        .orderBy('coins', 'desc')
+        .limit(10)
+        .get();
 
-  return res.status(400).json({ error: 'onbekend verzoek' });
+      if (usersSnapshot.empty) {
+        return res.send({
+          type: 4,
+          data: {
+            content: 'Er staan nog geen gebruikers op het leaderboard!'
+          }
+        });
+      }
+
+      const medals = ['🥇', '🥈', '🥉'];
+
+      const leaderboardText = usersSnapshot.docs.map((doc, index) => {
+        const user = doc.data();
+        const position = medals[index] || `**${index + 1}.**`;
+
+        return `${position} **${user.username}** — ${user.coins} coins`;
+      }).join('\n');
+
+      return res.send({
+        type: 4,
+        data: {
+          embeds: [{
+            title: 'Coins Leaderboard',
+            description: leaderboardText,
+            color: 0xFFD700,
+            footer: {
+              text: 'Top 10 rijkste gebruikers'
+            },
+            timestamp: new Date().toISOString()
+          }]
+        }
+      });
+    }
+  }
+  return res.status(400).json({ error: "onbekend verzoek" });
 });
 
 app.listen(PORT, () => {
