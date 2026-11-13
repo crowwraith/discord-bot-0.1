@@ -126,8 +126,68 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
 
   if (spel.name === 'roulette') {
-    const kleur = spel.options.find(optie => optie.name === 'kleur').value;
-    return res.send({ type: 4, data: { content: `Roulette op ${kleur} met ${inzet} coins (komt nog)` } });
+  const random = Math.floor(Math.random() * 3);
+  let uitslag;
+  let gifUrl;
+
+  const kleur = spel.options.find(optie => optie.name === 'kleur').value;
+
+  let resultaat;
+
+  if (random == 0) {
+    resultaat = 'groen';
+  } else if (random == 1) {
+    resultaat = 'rood';
+  } else {
+    resultaat = 'zwart';
+  }
+
+  if (kleur === resultaat) {
+      const winst = inzet * 3;
+
+      await userRef.update({
+        coins: userDoc.data().coins + winst
+      });
+
+      uitslag = `Je hebt gewonnen! Je wint ${winst} coins!`;
+      gifUrl = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMWRzbzl3dmVjZ2d0a2hrY2U4M2xhaGplaGhiZmtld2VoMnFtcXdsMyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/lZTvTGEGKU6gnQ2wBr/giphy.gif';
+
+    } else {
+      await userRef.update({
+        coins: userDoc.data().coins - inzet
+      });
+
+      uitslag = `Je hebt verloren! Je verliest ${inzet} coins.`;
+      gifUrl = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExa240aGY3Mmh3aXE5ZzJubGkycmdidjRlNnQ1d28zZXN3d3MxaThxOCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/b7lMFJAqk5ERqtkf1o/giphy.gif';
+    }
+
+    res.send({
+      type: 4,
+      data: {
+        content: 'De roulette draait...',
+        embeds: [{
+          image: {
+            url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZmw3Zmc2aWZlaW02dHk5eXhtaDY3cWpkbWNuNDFyYWY0OHlhMWNvbyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/d46C5wf3bjVK8pR6/giphy.gif'
+          }
+        }]
+      }
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    await DiscordRequest(`webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`, {
+      method: 'PATCH',
+      body: {
+        content: uitslag,
+        embeds: [{
+          image: {
+            url: gifUrl
+          }
+        }]
+      }
+    });
+
+    return;
   }
 }
 
