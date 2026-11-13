@@ -2,11 +2,7 @@
 import 'dotenv/config';
 
 import { initializeApp, cert } from 'firebase-admin/app';
-import {
-  getFirestore,
-  FieldValue
-} from 'firebase-admin/firestore';
-
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import serviceAccount from './serviceAccountKey.json' with { type: 'json' };
 // use to test connection: node test-firestore.js 
 console.log('TEST SCRIPT STARTED');
